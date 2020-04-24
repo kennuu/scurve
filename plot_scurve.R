@@ -19,8 +19,4 @@ for (end_t in as.numeric(levels(as.factor(fits$until)))) {
   ggsave(paste0("data/estimate_", str_pad(end_t, 3, pad = "0"), ".png"))
 }
 
-system("convert -delay 100 data/estimate_*.png data/estimate_animated.gif")
-
-# another approach with gganimate
-# animate(g, duration = 5, fps = 20, width = 200, height = 200, renderer = gifski_renderer())
-# anim_save("data/output.gif")
+system("convert -delay 20 data/estimate_*.png data/estimate_animated.gif")

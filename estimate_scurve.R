@@ -2,18 +2,21 @@ library(brms)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-library(gganimate)
-library(transformr)
-library(gifski)
+# library(gganimate)
+# library(transformr)
+# library(gifski)
 
 data <- readRDS("data/data.rds")
-#brms
-# TODO: modify the formula to have exp(c), and exp(a), and the priors accordingly
-prior <- prior(normal(0, 1000), nlpar="a") +
-  prior(normal(0, 1), nlpar="b") + 
-  prior(normal(0, 10000), nlpar="c")
 
-maxiters <- function(t) round(16000 + exp(0.25*(120-t)))
+prior <- prior(normal(0, 5), nlpar="a") +
+  prior(normal(0, 3), nlpar="b") + 
+  prior(normal(0, 20), nlpar="c")
+# ORIG params:
+# a = log(100) ~ 4.6
+# b = log(0.1) ~ -2.3
+# c = log(4000) ~ 8.3
+
+# maxiters <- function(t) round(5000 + exp(0.15*(120-t)))
 
 max_iter <- 200000
 
@@ -21,8 +24,7 @@ if (file.exists("data/fits.rds")) {
   fits <- readRDS("data/fits.rds")
 } 
 
-# end_t <- 70
-for (end_t in seq(120, 10, -10)) {
+for (end_t in seq(1, 120, 1)) {
   print(paste("Data with t <", end_t))
   new = FALSE
   if (!exists("fits")) new = TRUE
@@ -30,15 +32,16 @@ for (end_t in seq(120, 10, -10)) {
   if (dim(filter(fits, until == end_t))[1] == 0) new = TRUE}
   if (new) {
     
-    iter <- min(maxiters(end_t), max_iter)
+    # iter <- min(maxiters(end_t), max_iter)
+    iter <- 15000
     data_seen <- filter(data, t <= end_t) 
-    model <- brm(bf(y ~ c / (1 + a * exp(-b * t)), a + b + c ~ 1, nl = TRUE),
+    model <- brm(bf(y ~ exp(c) / (1 + exp(a) * exp(-exp(b) * t)), a + b + c ~ 1, nl = TRUE),
                data = data_seen,
                prior = prior,
                iter = iter,
-               control = list(adapt_delta = 0.98))  
+               control = list(adapt_delta = 0.98, max_treedepth = 15))  
       
-    # summary(model)
+    print(summary(model))
     # plot(model)
     
     fits_new <- as.data.frame(fitted(model, newdata = data, re_formula = NA)) %>% bind_cols(data) %>%
@@ -52,7 +55,6 @@ for (end_t in seq(120, 10, -10)) {
     else {
       fits <- fits_new    
     }
-    # file_renderer(dir = "/Users/jaakkos/Reaktor/scurve/data/", prefix = "gganim_plot", overwrite = TRUE)
     saveRDS(fits, file="data/fits.rds")
   }
   else print("already calculated")
